@@ -1,0 +1,214 @@
+>>recipeinfo<<
+Summary: Include an uploaded (attached) text or HTML file into a PmWiki page
+Version: 20080105
+Prerequisites: PmWiki version 2.2-beta16
+Status: beta
+Maintainer: [[~Kathryn Andersen]]
+Categories: [[!Includes]]
+File: Attach:includeupload.php
+(:if exists {$Name}-Talk:)Discussion: [[{$Name}-Talk]](:if:)
+>><<
+!! Questions answered by this recipe
+
+How do I include a file that I've uploaded (with [=Attach:=])?\\
+How do I include a file which is somewhere else on the same webserver?
+
+!!Description
+(:Description Include an uploaded (attached) text/HTML file into a PmWiki page.:){$Description}
+
+The includeupload script
+provides [@(:includeupload:)@] markup, which enables files which
+have been uploaded (with [=Attach:=]) to be included directly into wiki
+pages.  This can also include files which are under the DOCUMENT_ROOT
+of the webserver.
+
+By default, this includes text and HTML files only.  Text files are enclosed
+in <pre> tags, and HTML files have their body content extracted and
+displayed inside a <div>.  It does strip out the <head> tags, it only includes the <body>
+content.
+Other file types can be added (see below).
+
+HTML files (and files converted to HTML) will also have relative
+links inside them converted to absolute links (href links and image files).
+
+!!!Warning
+
+It assumes that if someone is trusted enough to upload a file, then they aren't going to include malicious JavaScript. There's a reason why uploads are disabled by default...
+
+In other words, if the uploaded file includes JavaScript, nice or nasty (or any other flavour of nice and nasty), this recipe will send it right through to the user. As such, it's recommended for sites that tightly control who is allowed to upload.
+
+!!!Including Attached Files
+
+To include a file uploaded with [=Attach:=], just give the name of the file.
+
+[@
+(:includeupload myfile.txt:)
+
+(:includeupload myfile2.html:)
+@]
+
+This can also include files attached to other groups, in the same way
+that [=Attach:=] can.  For example:
+
+[@(:includeupload SomeGroup./thatfile.html:)@]
+
+Attached files are checked against the (new) 'includeupload' authorization
+level; to be precise, display of an uploaded file is allowed if the user is
+authorized for the page/group that the file is associated with.  The
+'includeupload' authorization defaults to being the same as 'read'
+authorization.
+
+[@$HandleAuth['includeupload'] = 'read';@]
+
+!!!Including Website Files
+
+To include a file which resides under the DOCUMENT_ROOT of the webserver,
+give the path relative to the DOCUMENT_ROOT of the webserver.  The path
+must start with '/' to distinguish it from attached files.
+
+[@
+(:includeupload /path/relative/to/web/root/file.txt:)
+@]
+
+So, for example, if the file's URL would normally be
+
+[=http://www.example.com/foo/bar.txt=]
+
+then the directive would be
+
+[@
+(:includeupload /foo/bar.txt:)
+@]
+
+By default, this uses URL fopen to open such files, so as to
+comply with the webserver's security.  However, url_fopen is not
+always enabled in PHP installations.  If this is the case, then
+you need to set
+
+[@$IncludeUploadUrlFopenEnabled = 0;@]
+
+in your local/config.php file.
+When [=$IncludeUploadUrlFopenEnabled=] is false, then this will
+attempt to read the file directly from the filesystem, bypassing
+the webserver.
+
+If you want to disable reading of webserver files altogether, then
+* disable url_fopen in your PHP configuration and
+* set [=$IncludeUploadUrlFopenEnabled = 1;=]
+
+This will ensure that includeupload cannot use URL fopen, and will not
+try to read from the filesystem.
+
+!!!Conversion
+
+A text-to-HTML converter can be called for text files, by setting
+$IncludeUploadToHtmlCmd['txt'] to a suitable command.  For example
+
+[@
+$IncludeUploadToHtmlCmd['txt'] = '/usr/bin/txt2html --xhtml';
+
+$IncludeUploadToHtmlCmd['txt'] = '/usr/bin/asciidoc -o -';
+@]
+
+This command will be passed a filename, and the output is expected to
+be given on standard output.  The output of this command will have the
+body content extracted as with a HTML file.
+
+This mechanism can be used, in addition, to display files of different
+types, so long as you have a command that will convert that file
+to HTML in standard output.  The type is determined either by the
+filename extension, or overridden by the type= argument.
+
+This can also be used to give different arguments to the text
+conversion command, by defining a different "type" and setting
+the type of that file with the type= argument.
+For example, supposing I have a poem in mypoem.txt
+Make a special 'poem' type, with different arguments: 
+
+[@
+$IncludeUploadToHtmlCmd['poem'] = '/usr/bin/txt2html --xhtml --short_line_length=80';
+@]
+
+Then give it the poem type:
+
+[@
+(:includeupload type=poem mypoem.txt:)
+@]
+ 
+!!!Additional Options
+
+Additional options:
+:class:the CSS class to give the enclosing container.  The default class is 'includeup'.\\
+[@(:includeupload class=foo bar.html:)@]
+
+!!!Styling included files
+
+You can change the appearance of the included file section by adding suitable CSS commands to your
+pub/css/local.css file (or to pub/css/Group.css for a particular group).  See [[PmWiki/WikiStyles]] for more information.
+
+Here's an example:
+
+[@
+.includeup {
+	background: #ddddee;
+	border: black 1px dotted;
+	padding: 0.5em;
+}
+@]
+
+Remember that the "class=" option above enables you to give a different CSS class
+(and thus a different CSS style) to different included files if you so wish.
+
+!!!Activation
+
+To activate this script, copy it into the cookbook/ directory, then add
+the following line to your local/config.php:
+
+[@
+include_once("$FarmD/cookbook/includeupload.php");
+@]
+
+!! Notes
+
+IWFM (it works for me).
+
+Large files will take longer to load.
+
+The relative-to-absolute URL conversion looks for '''href="''' and '''src="''' to find the URLs to convert, so if you find that some URLs aren't being converted, check the source, in case the links don't match that pattern.
+
+!! Release Notes
+
+%comment% If the recipe has multiple releases, then release notes can be placed here.  Note that it's often easier for people to work with "release dates" instead of "version numbers".
+* (2008-01-05)
+**Fixed bug with relative anchor links
+**added [[~HansB]]'s suggested escape-html-chars for plain text includes
+* (2007-05-27) Added relative-to-absolute URL conversion.
+* (2007-05-08)
+**Fixed security problems:
+*** replaced txt2html= option with type= option
+*** use url_fopen to conform to Apache permissions
+*** added 'includeupload' authorization level
+**The type= option also enables files of other types to be used.
+* (2007-03-16) Corrected bug with path parsing, thanks to [[~SteP]].
+* (2006-11-19) Added '''class=''', '''txt2html=''' options, and enabled upload of any file on the webserver, not just Attached files.
+* (2006-11-02) Initial version
+
+!! Comments
+(:if false:)
+This space is for User-contributed commentary and notes.
+Please include your name and a date along with your comment.
+Optional alternative:  create a new page with a name like "ThisRecipe-Talk" (e.g. PmCalendar-Talk).
+(:if exists {$Name}-Talk:)See Discussion at [[{$Name}-Talk]](:if:)
+
+!! See Also
+
+* [[Include File]]
+* [[Include Url]]
+* [[Include Site]]
+
+!! Contributors
+
+* [[~SteP]]
+* [[~ThomasP]] for includeupload security levels (taken from his [[IncludeFile]])
+* [[~HansB]] for escaping html characters in plain-text includes
+
